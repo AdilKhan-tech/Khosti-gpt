@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Sparkles, 
   Paperclip, 
@@ -8,7 +8,6 @@ import {
   Mic, 
   X,
   Send,
-  Square,
   Plus,
   File,
   Link,
@@ -16,8 +15,8 @@ import {
 } from 'lucide-react';
 import { useChat } from './ChatProvider';
 import { useAuth } from './AuthProvider';
-import InputBox from './InputBox';
 import { MessageList } from './MessageBubble';
+import Logo from './Logo';
 
 const SUGGESTIONS = [
   'Explain quantum computing simply',
@@ -32,6 +31,7 @@ export default function ChatWindow() {
     isStreaming,
     sendMessage,
     createConversation,
+    editMessage,
   } = useChat();
   const { user } = useAuth();
 
@@ -43,6 +43,18 @@ export default function ChatWindow() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const imagePreviews = useMemo(() => {
+    const previews: Record<string, string> = {};
+    attachments.forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        previews[`${file.name}-${file.size}-${file.lastModified}`] = URL.createObjectURL(file);
+      }
+    });
+    return previews;
+  }, [attachments]);
+
+  useEffect(() => () => Object.values(imagePreviews).forEach((url) => URL.revokeObjectURL(url)), [imagePreviews]);
 
   const messages = activeConversation?.messages || [];
   const isEmpty = messages.length === 0;
@@ -66,11 +78,38 @@ export default function ChatWindow() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSend = () => {
+  const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+  const prepareImage = async (file: File) => {
+    const source = await fileToDataUrl(file);
+    const image = new Image();
+    image.src = source;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    });
+
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  };
+
+  const handleSend = async () => {
     if (inputValue.trim() || attachments.length > 0) {
       const message = inputValue.trim() || 'Check this out';
-      // Here you would handle attachments with the message
-      sendMessage(message);
+      const images = await Promise.all(
+        attachments.filter((file) => file.type.startsWith('image/')).map(prepareImage),
+      );
+      await sendMessage(message, images);
       setInputValue('');
       setAttachments([]);
       setShowAttachMenu(false);
@@ -80,7 +119,7 @@ export default function ChatWindow() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -136,8 +175,8 @@ export default function ChatWindow() {
         {isEmpty ? (
           <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-10 md:px-6">
             {/* Logo */}
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#10a37f] shadow-[0_10px_40px_rgba(16,163,127,0.35)] animate-in zoom-in duration-500">
-              <Sparkles className="h-7 w-7 text-white" />
+            <div className="mb-6 animate-in zoom-in duration-500">
+              <Logo />
             </div>
             
             <h1 className="mb-2 text-center text-3xl font-semibold tracking-tight animate-in slide-in-from-bottom-4 duration-500 delay-100">
@@ -167,7 +206,12 @@ export default function ChatWindow() {
             </div>
           </div>
         ) : (
-          <MessageList messages={messages} isStreaming={isStreaming} />
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            conversationId={activeConversation?.id || ''}
+            onEditMessage={editMessage}
+          />
         )}
       </div>
 
@@ -186,8 +230,10 @@ export default function ChatWindow() {
                     className="group relative flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm"
                   >
                     {isImage ? (
+                      // Blob previews cannot use next/image's static optimizer.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={URL.createObjectURL(file)}
+                        src={imagePreviews[`${file.name}-${file.size}-${file.lastModified}`]}
                         alt={file.name}
                         className="h-8 w-8 rounded object-cover"
                       />
@@ -288,7 +334,7 @@ export default function ChatWindow() {
                 >
                   <Send className="h-4 w-4" strokeWidth={2} />
                 </button>
-              ) : (
+              ) : user?.dictation ? (
                 <button
                   type="button"
                   onClick={() => setIsRecording(!isRecording)}
@@ -301,7 +347,7 @@ export default function ChatWindow() {
                 >
                   <Mic className="h-5 w-5" strokeWidth={1.5} />
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
 

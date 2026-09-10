@@ -4,6 +4,7 @@ import { json } from 'express';
 import { AppModule } from './app.module.js';
 import sequelize from './config/database.js';
 import './models/user.model.js';
+import './models/user-settings.model.js';
 
 async function bootstrap() {
   try {

@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import Logo from '@/components/Logo';
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
@@ -14,9 +15,9 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) {
-    router.replace('/');
-  }
+  useEffect(() => {
+    if (!loading && user) router.replace('/dashboard');
+  }, [loading, user, router]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,7 +25,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(name, email, password);
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -36,9 +37,7 @@ export default function RegisterPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[#212121] px-4">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#171717] p-8 shadow-2xl">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10a37f] text-lg font-bold text-white">
-            K
-          </div>
+          <div className="mb-4 flex justify-center"><Logo /></div>
           <h1 className="text-2xl font-semibold text-white">Create account</h1>
           <p className="mt-2 text-sm text-white/50">Sign up to start chatting with KhostiGPT</p>
         </div>

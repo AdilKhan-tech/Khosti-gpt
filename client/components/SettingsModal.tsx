@@ -22,6 +22,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
+import { useChat } from './ChatProvider';
 
 // Settings navigation items - KhostiGPT style
 const SETTINGS_SECTIONS = [
@@ -52,7 +53,7 @@ const CONTRAST_OPTIONS = [
 ];
 
 const ACCENT_COLORS = [
-  { value: 'default', label: 'Default', color: '#10a37f' },
+  { value: 'default', label: 'Default', color: 'var(--accent)' },
   { value: 'blue', label: 'Blue', color: '#3b82f6' },
   { value: 'purple', label: 'Purple', color: '#8b5cf6' },
   { value: 'pink', label: 'Pink', color: '#ec4899' },
@@ -70,6 +71,51 @@ const LANGUAGES = [
   { value: 'ja', label: 'Japanese' },
 ];
 
+type ToggleSettingKey =
+  | 'email_notifications'
+  | 'push_notifications'
+  | 'chat_updates'
+  | 'product_announcements'
+  | 'remember_preferences'
+  | 'personalized_suggestions'
+  | 'content_customization'
+  | 'adaptive_responses'
+  | 'web_search'
+  | 'code_interpreter'
+  | 'data_analysis'
+  | 'image_generation'
+  | 'voice_input'
+  | 'voice_output'
+  | 'voice_activation'
+  | 'language_detection'
+  | 'content_filtering'
+  | 'safety_warnings'
+  | 'parental_controls'
+  | 'safe_search';
+
+const DEFAULT_TOGGLE_SETTINGS: Record<ToggleSettingKey, boolean> = {
+  email_notifications: true,
+  push_notifications: true,
+  chat_updates: true,
+  product_announcements: true,
+  remember_preferences: true,
+  personalized_suggestions: true,
+  content_customization: true,
+  adaptive_responses: true,
+  web_search: true,
+  code_interpreter: true,
+  data_analysis: true,
+  image_generation: true,
+  voice_input: true,
+  voice_output: true,
+  voice_activation: true,
+  language_detection: true,
+  content_filtering: true,
+  safety_warnings: true,
+  parental_controls: false,
+  safe_search: true,
+};
+
 export default function SettingsModal({
   open,
   onClose,
@@ -78,6 +124,7 @@ export default function SettingsModal({
   onClose: () => void;
 }) {
   const { user, saveSettings } = useAuth();
+  const { conversations } = useChat();
   
   const [activeSection, setActiveSection] = useState('general');
   const [saving, setSaving] = useState(false);
@@ -88,23 +135,48 @@ export default function SettingsModal({
   // Settings state
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [appearance, setAppearance] = useState(user?.appearance || 'system');
-  const [contrast, setContrast] = useState(user?.contrast || 'system');
-  const [accentColor, setAccentColor] = useState(user?.accentColor || 'default');
-  const [language, setLanguage] = useState(user?.language || 'auto');
-  const [higherIntelligence, setHigherIntelligence] = useState(user?.higherIntelligence ?? true);
+  const [appearance, setAppearance] = useState(user?.theme || 'dark');
+  const [accentColor, setAccentColor] = useState(user?.accent_color || 'default');
+  const [language, setLanguage] = useState(user?.language || 'en');
+  const [higherIntelligence, setHigherIntelligence] = useState(user?.higher_intelligence ?? true);
   const [dictation, setDictation] = useState(user?.dictation ?? true);
+  const [featureSettings, setFeatureSettings] = useState(DEFAULT_TOGGLE_SETTINGS);
+  const [dataRetentionDays, setDataRetentionDays] = useState(30);
+  const [cacheEnabled, setCacheEnabled] = useState(true);
 
   useEffect(() => {
     if (!open || !user) return;
     setName(user.name || '');
     setEmail(user.email || '');
-    setAppearance(user.appearance || 'system');
-    setContrast(user.contrast || 'system');
-    setAccentColor(user.accentColor || 'default');
-    setLanguage(user.language || 'auto');
-    setHigherIntelligence(user.higherIntelligence ?? true);
+    setAppearance(user.theme || 'dark');
+    setAccentColor(user.accent_color || 'default');
+    setLanguage(user.language || 'en');
+    setHigherIntelligence(user.higher_intelligence ?? true);
     setDictation(user.dictation ?? true);
+    setFeatureSettings({
+      email_notifications: user.email_notifications ?? true,
+      push_notifications: user.push_notifications ?? true,
+      chat_updates: user.chat_updates ?? true,
+      product_announcements: user.product_announcements ?? true,
+      remember_preferences: user.remember_preferences ?? true,
+      personalized_suggestions: user.personalized_suggestions ?? true,
+      content_customization: user.content_customization ?? true,
+      adaptive_responses: user.adaptive_responses ?? true,
+      web_search: user.web_search ?? true,
+      code_interpreter: user.code_interpreter ?? true,
+      data_analysis: user.data_analysis ?? true,
+      image_generation: user.image_generation ?? true,
+      voice_input: user.voice_input ?? true,
+      voice_output: user.voice_output ?? true,
+      voice_activation: user.voice_activation ?? true,
+      language_detection: user.language_detection ?? true,
+      content_filtering: user.content_filtering ?? true,
+      safety_warnings: user.safety_warnings ?? true,
+      parental_controls: user.parental_controls ?? false,
+      safe_search: user.safe_search ?? true,
+    });
+    setDataRetentionDays(user.data_retention_days ?? 30);
+    setCacheEnabled(user.cache_enabled ?? true);
     setError('');
     setSaved(false);
     setSearchQuery('');
@@ -124,13 +196,14 @@ export default function SettingsModal({
     try {
       await saveSettings({ 
         name, 
-        email,
-        appearance,
-        contrast,
-        accentColor,
+        theme: appearance,
         language,
-        higherIntelligence,
+        accent_color: accentColor,
+        higher_intelligence: higherIntelligence,
         dictation,
+        ...featureSettings,
+        data_retention_days: dataRetentionDays,
+        cache_enabled: cacheEnabled,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -140,6 +213,45 @@ export default function SettingsModal({
       setSaving(false);
     }
   };
+
+  const upgradePlan = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await saveSettings({ plan: 'pro' });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upgrade plan');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleSetting = (key: ToggleSettingKey) => {
+    setFeatureSettings((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const renderToggleRows = (items: Array<{ key: ToggleSettingKey; label: string }>) => (
+    <div className="space-y-3">
+      {items.map((item) => {
+        const enabled = featureSettings[item.key];
+        return (
+          <div key={item.key} className="flex items-center justify-between border-b border-white/5 py-2">
+            <span className="text-sm text-white/80">{item.label}</span>
+            <button
+              type="button"
+              aria-pressed={enabled}
+              onClick={() => toggleSetting(item.key)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? 'bg-[var(--accent)]' : 'bg-white/20'}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${enabled ? 'right-0.5' : 'left-0.5'}`} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const renderGeneralSettings = () => (
     <div className="space-y-6">
@@ -203,37 +315,12 @@ export default function SettingsModal({
                 text-sm transition-all
                 ${
                   appearance === option.value
-                    ? 'border-[#10a37f] bg-[#10a37f]/10 text-white'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-white'
                     : 'border-white/10 text-white/60 hover:bg-white/5'
                 }
               `}
             >
               <option.icon className="h-4 w-4" />
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contrast */}
-      <div>
-        <p className="mb-2 text-xs text-white/40">Contrast</p>
-        <div className="flex gap-2">
-          {CONTRAST_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setContrast(option.value)}
-              className={`
-                rounded-lg border px-4 py-2
-                text-sm capitalize transition-all
-                ${
-                  contrast === option.value
-                    ? 'border-[#10a37f] bg-[#10a37f]/10 text-white'
-                    : 'border-white/10 text-white/60 hover:bg-white/5'
-                }
-              `}
-            >
               {option.label}
             </button>
           ))}
@@ -255,7 +342,7 @@ export default function SettingsModal({
                 text-sm transition-all
                 ${
                   accentColor === option.value
-                    ? 'border-[#10a37f] bg-[#10a37f]/10 text-white'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-white'
                     : 'border-white/10 text-white/60 hover:bg-white/5'
                 }
               `}
@@ -284,7 +371,7 @@ export default function SettingsModal({
                 text-sm transition-all text-left
                 ${
                   language === option.value
-                    ? 'border-[#10a37f] bg-[#10a37f]/10 text-white'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-white'
                     : 'border-white/10 text-white/60 hover:bg-white/5'
                 }
               `}
@@ -308,7 +395,7 @@ export default function SettingsModal({
           onClick={() => setHigherIntelligence(!higherIntelligence)}
           className={`
             relative h-6 w-11 shrink-0 rounded-full transition-colors
-            ${higherIntelligence ? 'bg-[#10a37f]' : 'bg-white/20'}
+            ${higherIntelligence ? 'bg-[var(--accent)]' : 'bg-white/20'}
           `}
         >
           <span
@@ -333,7 +420,7 @@ export default function SettingsModal({
           onClick={() => setDictation(!dictation)}
           className={`
             relative h-6 w-11 shrink-0 rounded-full transition-colors
-            ${dictation ? 'bg-[#10a37f]' : 'bg-white/20'}
+            ${dictation ? 'bg-[var(--accent)]' : 'bg-white/20'}
           `}
         >
           <span
@@ -362,76 +449,48 @@ export default function SettingsModal({
   const renderNotifications = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Manage your notification preferences.</p>
-      <div className="space-y-3">
-        {['Email notifications', 'Push notifications', 'Chat updates', 'Product announcements'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <button
-              type="button"
-              className="relative h-5 w-9 rounded-full bg-[#10a37f] transition-colors"
-            >
-              <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {renderToggleRows([
+        { key: 'email_notifications', label: 'Email notifications' },
+        { key: 'push_notifications', label: 'Push notifications' },
+        { key: 'chat_updates', label: 'Chat updates' },
+        { key: 'product_announcements', label: 'Product announcements' },
+      ])}
     </div>
   );
 
   const renderPersonalization = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Personalize your KhostiGPT experience.</p>
-      <div className="space-y-3">
-        {['Remember my preferences', 'Personalized suggestions', 'Content customization', 'Adaptive responses'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <button
-              type="button"
-              className="relative h-5 w-9 rounded-full bg-[#10a37f] transition-colors"
-            >
-              <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {renderToggleRows([
+        { key: 'remember_preferences', label: 'Remember my preferences' },
+        { key: 'personalized_suggestions', label: 'Personalized suggestions' },
+        { key: 'content_customization', label: 'Content customization' },
+        { key: 'adaptive_responses', label: 'Adaptive responses' },
+      ])}
     </div>
   );
 
   const renderPlugins = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Manage your plugins and integrations.</p>
-      <div className="space-y-2">
-        {['Web Search', 'Code Interpreter', 'Data Analysis', 'Image Generation'].map((item) => (
-          <div key={item} className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
-            <span className="text-sm text-white/80">{item}</span>
-            <button
-              type="button"
-              className="relative h-5 w-9 rounded-full bg-[#10a37f] transition-colors"
-            >
-              <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {renderToggleRows([
+        { key: 'web_search', label: 'Web Search' },
+        { key: 'code_interpreter', label: 'Code Interpreter' },
+        { key: 'data_analysis', label: 'Data Analysis' },
+        { key: 'image_generation', label: 'Image Generation' },
+      ])}
     </div>
   );
 
   const renderVoice = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Configure your voice settings.</p>
-      <div className="space-y-3">
-        {['Voice input', 'Voice output', 'Voice activation', 'Language detection'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <button
-              type="button"
-              className="relative h-5 w-9 rounded-full bg-[#10a37f] transition-colors"
-            >
-              <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {renderToggleRows([
+        { key: 'voice_input', label: 'Voice input' },
+        { key: 'voice_output', label: 'Voice output' },
+        { key: 'voice_activation', label: 'Voice activation' },
+        { key: 'language_detection', label: 'Language detection' },
+      ])}
     </div>
   );
 
@@ -440,24 +499,29 @@ export default function SettingsModal({
       <div className="rounded-xl bg-gradient-to-r from-[#10a37f]/10 to-[#10a37f]/5 border border-[#10a37f]/20 p-4">
         <div className="flex items-start justify-between">
           <div>
-            <h4 className="text-sm font-medium text-white">Current plan: Free</h4>
+            <h4 className="text-sm font-medium capitalize text-white">Current plan: {user?.plan || 'Free'}</h4>
             <p className="text-xs text-white/50 mt-0.5">
-              Upgrade to access more features and higher limits.
+              {user?.plan === 'pro' ? 'Pro features are enabled for this account.' : 'Upgrade to unlock higher limits and advanced features.'}
             </p>
           </div>
-          <button className="flex items-center gap-1.5 rounded-lg bg-[#10a37f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0d8c6c] transition-colors">
-            <Crown className="h-3.5 w-3.5" />
-            Upgrade
-          </button>
+          {user?.plan !== 'pro' && (
+            <button
+              type="button"
+              onClick={() => void upgradePlan()}
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-60"
+            >
+              <Crown className="h-3.5 w-3.5" />
+              {saving ? 'Upgrading...' : 'Upgrade'}
+            </button>
+          )}
         </div>
       </div>
-      <div className="space-y-2">
-        {['Payment method', 'Billing history', 'Invoices', 'Subscription settings'].map((item) => (
-          <button key={item} className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white/80">{item}</span>
-            <ChevronRight className="h-4 w-4 text-white/30" />
-          </button>
-        ))}
+      <div className="rounded-lg border border-white/5 px-3 py-3">
+        <p className="text-sm text-white/80">Plan status</p>
+        <p className="mt-1 text-xs text-white/40">
+          {user?.plan === 'pro' ? 'Your Pro plan is active.' : 'Your account is currently on the Free plan.'}
+        </p>
       </div>
     </div>
   );
@@ -466,40 +530,93 @@ export default function SettingsModal({
     <div className="space-y-4">
       <p className="text-sm text-white/60">Monitor your usage and limits.</p>
       <div className="space-y-3">
-        {['Messages used', 'API calls', 'Storage used', 'Monthly limits'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <span className="text-sm text-white/40">0 / Unlimited</span>
-          </div>
-        ))}
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Messages used</span>
+          <span className="text-sm text-white/40">{conversations.reduce((total, chat) => total + chat.messages.length, 0)}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Conversations</span>
+          <span className="text-sm text-white/40">{conversations.length}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">User messages</span>
+          <span className="text-sm text-white/40">{conversations.reduce((total, chat) => total + chat.messages.filter((message) => message.role === 'user').length, 0)}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Data retention</span>
+          <span className="text-sm text-white/40">{dataRetentionDays} days</span>
+        </div>
       </div>
     </div>
   );
 
-  const renderAnalytics = () => (
+  const renderAnalytics = () => {
+    const assistantMessages = conversations.flatMap((chat) => chat.messages.filter((message) => message.role === 'assistant'));
+    const completedReplies = assistantMessages.filter((message) => message.content.trim()).length;
+
+    return (
     <div className="space-y-4">
       <p className="text-sm text-white/60">View your analytics and insights.</p>
       <div className="space-y-3">
-        {['Conversation analytics', 'Response time', 'User satisfaction', 'Feature usage'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <span className="text-sm text-[#10a37f]">View</span>
-          </div>
-        ))}
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Completed replies</span>
+          <span className="text-sm text-[var(--accent)]">{completedReplies}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Average messages / chat</span>
+          <span className="text-sm text-[var(--accent)]">{conversations.length ? (conversations.reduce((total, chat) => total + chat.messages.length, 0) / conversations.length).toFixed(1) : '0.0'}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Last activity</span>
+          <span className="text-sm text-white/40">{conversations[0] ? new Date(conversations[0].updatedAt).toLocaleDateString() : 'No activity'}</span>
+        </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderDataControls = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Control your data and privacy.</p>
       <div className="space-y-3">
-        {['Export data', 'Delete data', 'Data retention', 'Privacy settings'].map((item) => (
-          <button key={item} className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white/80">{item}</span>
-            <ChevronRight className="h-4 w-4 text-white/30" />
-          </button>
-        ))}
+        <div className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
+          <div>
+            <p className="text-sm text-white/80">Data retention</p>
+            <p className="text-xs text-white/35">Days to keep conversation data</p>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={3650}
+            value={dataRetentionDays}
+            onChange={(event) => setDataRetentionDays(Number(event.target.value) || 1)}
+            className="w-20 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-right text-sm text-white outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const file = new Blob([JSON.stringify(conversations, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'khosti-gpt-conversations.json';
+            link.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 hover:bg-white/5 transition-colors"
+        >
+          <span className="text-sm text-white/80">Export data</span>
+          <ChevronRight className="h-4 w-4 text-white/30" />
+        </button>
+        <div className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2">
+          <span className="text-sm text-white/80">Saved conversations</span>
+          <span className="text-sm text-white/40">{conversations.length}</span>
+        </div>
+        <button type="button" className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 hover:bg-white/5 transition-colors">
+          <span className="text-sm text-white/80">Privacy settings</span>
+          <ChevronRight className="h-4 w-4 text-white/30" />
+        </button>
       </div>
     </div>
   );
@@ -508,12 +625,23 @@ export default function SettingsModal({
     <div className="space-y-4">
       <p className="text-sm text-white/60">Manage your storage.</p>
       <div className="space-y-3">
-        {['Total storage', 'Used storage', 'File storage', 'Cache settings'].map((item) => (
+        {['Total storage', 'Used storage', 'File storage'].map((item, index) => (
           <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
             <span className="text-sm text-white/80">{item}</span>
-            <span className="text-sm text-white/40">0 MB / 1 GB</span>
+            <span className="text-sm text-white/40">{index === 0 ? 'Local' : index === 1 ? `${new Blob([JSON.stringify(conversations)]).size} bytes` : `${conversations.length} chats`}</span>
           </div>
         ))}
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Cache settings</span>
+          <button
+            type="button"
+            aria-pressed={cacheEnabled}
+            onClick={() => setCacheEnabled((value) => !value)}
+            className={`relative h-5 w-9 rounded-full transition-colors ${cacheEnabled ? 'bg-[var(--accent)]' : 'bg-white/20'}`}
+          >
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${cacheEnabled ? 'right-0.5' : 'left-0.5'}`} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -521,19 +649,12 @@ export default function SettingsModal({
   const renderSafety = () => (
     <div className="space-y-4">
       <p className="text-sm text-white/60">Configure safety settings.</p>
-      <div className="space-y-3">
-        {['Content filtering', 'Safety warnings', 'Parental controls', 'Safe search'].map((item) => (
-          <div key={item} className="flex items-center justify-between py-2 border-b border-white/5">
-            <span className="text-sm text-white/80">{item}</span>
-            <button
-              type="button"
-              className="relative h-5 w-9 rounded-full bg-[#10a37f] transition-colors"
-            >
-              <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform" />
-            </button>
-          </div>
-        ))}
-      </div>
+      {renderToggleRows([
+        { key: 'content_filtering', label: 'Content filtering' },
+        { key: 'safety_warnings', label: 'Safety warnings' },
+        { key: 'parental_controls', label: 'Parental controls' },
+        { key: 'safe_search', label: 'Safe search' },
+      ])}
     </div>
   );
 
@@ -541,12 +662,19 @@ export default function SettingsModal({
     <div className="space-y-4">
       <p className="text-sm text-white/60">Manage your security and login settings.</p>
       <div className="space-y-3">
-        {['Password', 'Two-factor authentication', 'Login history', 'Active sessions', 'Security keys'].map((item) => (
-          <button key={item} className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white/80">{item}</span>
-            <ChevronRight className="h-4 w-4 text-white/30" />
-          </button>
-        ))}
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Signed-in email</span>
+          <span className="text-sm text-white/40">{user?.email || 'Unavailable'}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Account created</span>
+          <span className="text-sm text-white/40">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unavailable'}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-white/5 py-2">
+          <span className="text-sm text-white/80">Current session</span>
+          <span className="text-sm text-[var(--accent)]">Active</span>
+        </div>
+        <p className="pt-2 text-xs text-white/35">Password changes and two-factor authentication require backend security endpoints.</p>
       </div>
     </div>
   );

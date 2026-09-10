@@ -11,7 +11,7 @@ export type StreamHandlers = {
 };
 
 export async function streamChat(
-  messages: Pick<Message, 'role' | 'content'>[],
+  messages: Pick<Message, 'role' | 'content' | 'images'>[],
   handlers: StreamHandlers,
   options?: {
     signal?: AbortSignal;
@@ -30,7 +30,11 @@ export async function streamChat(
     method: 'POST',
     headers,
     body: JSON.stringify({
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        ...(m.images?.length ? { images: m.images } : {}),
+      })),
       model: options?.model,
     }),
     signal: options?.signal,

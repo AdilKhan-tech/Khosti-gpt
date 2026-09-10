@@ -29,6 +29,8 @@ import {
 import { useChat } from './ChatProvider';
 import { useAuth } from './AuthProvider';
 import SettingsModal from './SettingsModal';
+import AccountPanelModal, { type AccountPanel } from './AccountPanelModal';
+import Logo from './Logo';
 
 export default function Sidebar() {
   const {
@@ -49,6 +51,7 @@ export default function Sidebar() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountPanel, setAccountPanel] = useState<AccountPanel | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState({
     recents: true,
@@ -170,27 +173,27 @@ export default function Sidebar() {
 
       {/* SIDEBAR */}
       <aside
+        data-collapsed={!sidebarOpen}
         className={`
           fixed inset-y-0 left-0 z-40
           flex w-[260px] flex-col
           bg-[#212121] text-[#ececec]
-          transition-transform duration-300 ease-in-out
-          md:static md:translate-x-0
+          overflow-hidden
+          transition-all duration-300 ease-in-out
+          md:static
           ${
             sidebarOpen
-              ? 'translate-x-0'
-              : '-translate-x-full'
+              ? 'translate-x-0 md:w-[260px]'
+              : '-translate-x-full md:translate-x-0 md:w-[68px]'
           }
           border-r border-white/5
         `}
       >
         {/* ================= HEADER ================= */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/5">
+        <div className={`flex items-center justify-between px-3 py-2.5 border-b border-white/5 ${!sidebarOpen ? 'md:justify-center' : ''}`}>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-[#10a37f] flex items-center justify-center shadow-lg shadow-[#10a37f]/20">
-              <span className="text-sm font-bold text-white">AI</span>
-            </div>
-            <span className="text-sm font-medium text-white/90">KhostiGPT</span>
+            <Logo compact />
+            <span className={`text-sm font-medium text-white/90 ${!sidebarOpen ? 'md:hidden' : ''}`}>KhostiGPT</span>
           </div>
 
           <button
@@ -217,6 +220,7 @@ export default function Sidebar() {
             onClick={handleCreateChat}
             className="
               group flex w-full items-center gap-3
+              ${!sidebarOpen ? 'md:justify-center' : ''}
               rounded-xl px-3 py-2.5
               text-sm text-white
               bg-[#10a37f] hover:bg-[#0d8c6c]
@@ -226,15 +230,15 @@ export default function Sidebar() {
             "
           >
             <MessageSquarePlus className="h-[18px] w-[18px]" strokeWidth={1.8} />
-            <span className="flex-1 text-left">New chat</span>
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-white/50 bg-white/10 rounded border border-white/5">
+            <span className={`flex-1 text-left ${!sidebarOpen ? 'md:hidden' : ''}`}>New chat</span>
+            <kbd className={`hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-white/50 bg-white/10 rounded border border-white/5 ${!sidebarOpen ? 'md:hidden' : ''}`}>
               ⌘K
             </kbd>
           </button>
         </div>
 
         {/* ================= SEARCH ================= */}
-        <div className="px-3 pb-2">
+        <div className={`px-3 pb-2 ${!sidebarOpen ? 'md:hidden' : ''}`}>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
             <input
@@ -265,6 +269,7 @@ export default function Sidebar() {
                 type="button"
                 className="
                   flex w-full items-center gap-3
+                  ${!sidebarOpen ? 'md:justify-center' : ''}
                   rounded-xl px-3 py-2
                   text-sm text-white/70
                   hover:bg-white/5 hover:text-white
@@ -273,7 +278,7 @@ export default function Sidebar() {
                 "
               >
                 <item.icon className="h-4 w-4 text-white/40 group-hover:text-white/70" strokeWidth={1.5} />
-                <span className="flex-1 text-left">{item.label}</span>
+                <span className={`flex-1 text-left ${!sidebarOpen ? 'md:hidden' : ''}`}>{item.label}</span>
                 {item.badge && (
                   <span className="text-[9px] font-medium text-[#10a37f] bg-[#10a37f]/10 px-1.5 py-0.5 rounded-full">
                     {item.badge}
@@ -285,7 +290,7 @@ export default function Sidebar() {
         </div>
 
         {/* ================= CHAT HISTORY ================= */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className={`flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent ${!sidebarOpen ? 'md:hidden' : ''}`}>
           {/* RECENTS SECTION - NOW USING REAL CONVERSATIONS */}
           <div className="mb-1">
             <button
@@ -394,6 +399,10 @@ export default function Sidebar() {
               {/* Personalization */}
               <button
                 type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setAccountPanel('personalization');
+                }}
                 className="
                   flex w-full items-center gap-3
                   px-3 py-2.5
@@ -410,6 +419,10 @@ export default function Sidebar() {
               {/* Profile */}
               <button
                 type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setAccountPanel('profile');
+                }}
                 className="
                   flex w-full items-center gap-3
                   px-3 py-2.5
@@ -449,6 +462,10 @@ export default function Sidebar() {
               {/* Help */}
               <button
                 type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setAccountPanel('help');
+                }}
                 className="
                   flex w-full items-center gap-3
                   px-3 py-2.5
@@ -492,6 +509,7 @@ export default function Sidebar() {
             className="
               flex w-full
               items-center gap-3
+              ${!sidebarOpen ? 'md:justify-center' : ''}
               rounded-none
               px-2.5 py-2.5
               text-left
@@ -515,7 +533,7 @@ export default function Sidebar() {
             </div>
 
             {/* User info */}
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${!sidebarOpen ? 'md:hidden' : ''}`}>
               <p className="truncate text-sm font-medium text-white">
                 {user?.name || 'Account'}
               </p>
@@ -524,7 +542,7 @@ export default function Sidebar() {
               </p>
             </div>
 
-            <div className="flex flex-col items-end">
+            <div className={`flex flex-col items-end ${!sidebarOpen ? 'md:hidden' : ''}`}>
               <span className="text-[9px] font-medium text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
                 Free
               </span>
@@ -540,7 +558,7 @@ export default function Sidebar() {
         onClick={() => setSidebarOpen(true)}
         aria-label="Open sidebar"
         className={`
-          fixed left-3 top-3 z-20
+          fixed left-3 top-3 z-50 md:left-[76px]
           rounded-xl
           border border-white/10
           bg-[#212121]
@@ -549,7 +567,6 @@ export default function Sidebar() {
           shadow-lg shadow-black/30
           transition-all duration-200
           hover:bg-[#2a2a2a]
-          md:hidden
           ${
             sidebarOpen
               ? 'pointer-events-none opacity-0 scale-90'
@@ -564,6 +581,10 @@ export default function Sidebar() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <AccountPanelModal
+        panel={accountPanel}
+        onClose={() => setAccountPanel(null)}
       />
     </>
   );

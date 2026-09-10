@@ -28,7 +28,7 @@ type AuthContextValue = {
   logout: () => void;
   refreshUser: () => Promise<void>;
   saveSettings: (
-    input: Partial<Pick<AuthUser, 'name' | 'model' | 'theme'>>,
+    input: Partial<Omit<AuthUser, 'id' | 'email' | 'created_at' | 'updated_at'>>,
   ) => Promise<void>;
 };
 
@@ -56,6 +56,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const accentColors: Record<string, string> = {
+      default: '#10a37f',
+      blue: '#3b82f6',
+      purple: '#8b5cf6',
+      pink: '#ec4899',
+      orange: '#f97316',
+    };
+    document.documentElement.style.setProperty(
+      '--accent',
+      accentColors[user?.accent_color || 'default'] || accentColors.default,
+    );
+    document.documentElement.dataset.accent = user?.accent_color || 'default';
+
+    const selectedTheme = user?.theme || 'system';
+    const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light'
+      : 'dark';
+    const applyTheme = () => {
+      document.documentElement.dataset.theme =
+        selectedTheme === 'system' ? systemTheme : selectedTheme;
+    };
+    applyTheme();
+
+    if (selectedTheme !== 'system') return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    const handleThemeChange = () => {
+      document.documentElement.dataset.theme = mediaQuery.matches ? 'light' : 'dark';
+    };
+    mediaQuery.addEventListener('change', handleThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
+  }, [user?.accent_color, user?.theme]);
 
   const persist = useCallback((nextToken: string, nextUser: AuthUser) => {
     localStorage.setItem(TOKEN_KEY, nextToken);

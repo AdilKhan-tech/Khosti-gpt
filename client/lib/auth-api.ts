@@ -6,10 +6,38 @@ export type AuthUser = {
   id: number;
   name: string;
   email: string;
+  plan: string;
   model: string;
   theme: string;
+  language: string;
+  accent_color: string;
+  higher_intelligence: boolean;
+  dictation: boolean;
   created_at?: string;
   updated_at?: string;
+  custom_instructions?: string;
+  email_notifications: boolean;
+  push_notifications: boolean;
+  chat_updates: boolean;
+  product_announcements: boolean;
+  remember_preferences: boolean;
+  personalized_suggestions: boolean;
+  content_customization: boolean;
+  adaptive_responses: boolean;
+  web_search: boolean;
+  code_interpreter: boolean;
+  data_analysis: boolean;
+  image_generation: boolean;
+  voice_input: boolean;
+  voice_output: boolean;
+  voice_activation: boolean;
+  language_detection: boolean;
+  content_filtering: boolean;
+  safety_warnings: boolean;
+  parental_controls: boolean;
+  safe_search: boolean;
+  data_retention_days: number;
+  cache_enabled: boolean;
 };
 
 export type AuthResponse = {
@@ -68,7 +96,7 @@ export async function fetchMe(token: string): Promise<AuthUser> {
 
 export async function updateProfile(
   token: string,
-  input: Partial<Pick<AuthUser, 'name' | 'model' | 'theme'>>,
+  input: Partial<Omit<AuthUser, 'id' | 'email' | 'created_at' | 'updated_at'>>,
 ): Promise<{ message: string; user: AuthUser }> {
   const response = await fetch(`${API_BASE}/users/me`, {
     method: 'PATCH',

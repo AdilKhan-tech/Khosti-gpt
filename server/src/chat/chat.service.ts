@@ -106,12 +106,15 @@ function detectIdentityQuestion(text: string): boolean {
 export class ChatService {
   private readonly groq: OpenAI | null;
   private readonly defaultModel: string;
+  private readonly visionModel: string | null;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('GROQ_API_KEY');
 
     this.defaultModel =
       this.config.get<string>('GROQ_MODEL') || 'openai/gpt-oss-120b';
+    this.visionModel =
+      this.config.get<string>('GROQ_VISION_MODEL') || null;
 
     this.groq = apiKey
       ? new OpenAI({
@@ -192,6 +195,21 @@ export class ChatService {
       .reverse()
       .find((m) => m.role === 'user');
 
+    const hasImages = messages.some(
+      (message) =>
+        Array.isArray(message.content) &&
+        message.content.some((part) => part.type === 'image_url'),
+    );
+
+    if (hasImages && !this.visionModel) {
+      writeEvent('error', {
+        message:
+          'Image understanding is not enabled for this Groq account. Add an accessible multimodal model as GROQ_VISION_MODEL in server/.env.',
+      });
+      res.end();
+      return;
+    }
+
     if (lastUserMessage) {
       let text = '';
       if (typeof lastUserMessage.content === 'string') {
@@ -227,7 +245,7 @@ export class ChatService {
 
     try {
       const stream = await this.groq.chat.completions.create({
-        model: options?.model || this.defaultModel,
+        model: hasImages ? this.visionModel! : options?.model || this.defaultModel,
 
         messages: [
           {
