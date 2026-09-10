@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Pencil, X } from 'lucide-react';
 import type { Message } from '@/lib/types';
 
 function CopyButton({ text }: { text: string }) {
@@ -28,11 +28,15 @@ function CopyButton({ text }: { text: string }) {
 export default function MessageBubble({
   message,
   isStreaming,
+  onEdit,
 }: {
   message: Message;
   isStreaming?: boolean;
+  onEdit?: (content: string) => void;
 }) {
   const isUser = message.role === 'user';
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.content);
   const showCursor =
     !isUser && isStreaming && message.content.length > 0;
 
@@ -56,9 +60,32 @@ export default function MessageBubble({
         }`}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap text-[15px] leading-7">
-            {message.content}
-          </p>
+          editing ? (
+            <div className="min-w-[260px] space-y-2">
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                className="w-full resize-y rounded-lg border border-white/15 bg-black/20 p-2 text-sm text-white outline-none focus:border-[#10a37f]"
+                rows={3}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setEditing(false)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/60 hover:bg-white/10"><X className="h-3 w-3" />Cancel</button>
+                <button type="button" onClick={() => { onEdit?.(draft); setEditing(false); }} className="rounded-md bg-[#10a37f] px-2.5 py-1 text-xs font-medium text-white">Save</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {message.images?.map((image, index) => (
+                <img key={`${message.id}-${index}`} src={image} alt="Attached upload" className="mb-2 max-h-64 max-w-full rounded-xl object-contain" />
+              ))}
+              <p className="whitespace-pre-wrap text-[15px] leading-7">{message.content}</p>
+              <div className="mt-2 flex justify-end gap-1 opacity-0 transition group-hover:opacity-100">
+                <CopyButton text={message.content} />
+                {onEdit && <button type="button" onClick={() => { setDraft(message.content); setEditing(true); }} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-white/60 transition hover:bg-white/10 hover:text-white"><Pencil className="h-3 w-3" />Edit</button>}
+              </div>
+            </>
+          )
         ) : (
           <div className="prose-chat relative text-[15px] leading-7">
             <ReactMarkdown
@@ -172,9 +199,13 @@ export default function MessageBubble({
 export function MessageList({
   messages,
   isStreaming,
+  conversationId,
+  onEditMessage,
 }: {
   messages: Message[];
   isStreaming: boolean;
+  conversationId: string;
+  onEditMessage: (conversationId: string, messageId: string, content: string) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -188,6 +219,7 @@ export function MessageList({
         <MessageBubble
           key={message.id}
           message={message}
+          onEdit={(content) => onEditMessage(conversationId, message.id, content)}
           isStreaming={
             isStreaming &&
             index === messages.length - 1 &&

@@ -31,7 +31,8 @@ type ChatContextValue = {
   selectConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  editMessage: (conversationId: string, messageId: string, content: string) => void;
+  sendMessage: (content: string, images?: string[]) => Promise<void>;
   stopStreaming: () => void;
 };
 
@@ -53,9 +54,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, []);
 
   useEffect(() => {
     const loaded = loadConversations();
@@ -131,6 +136,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }));
   }, [updateConversation]);
 
+  const editMessage = useCallback(
+    (conversationId: string, messageId: string, content: string) => {
+      const trimmed = content.trim();
+      if (!trimmed) return;
+      updateConversation(conversationId, (conversation) => {
+        const messageIndex = conversation.messages.findIndex((message) => message.id === messageId);
+        if (messageIndex < 0) return conversation;
+        return {
+          ...conversation,
+          title: messageIndex === 0 ? titleFromMessage(trimmed) : conversation.title,
+          messages: conversation.messages.slice(0, messageIndex + 1).map((message) =>
+            message.id === messageId ? { ...message, content: trimmed } : message,
+          ),
+          updatedAt: Date.now(),
+        };
+      });
+    },
+    [updateConversation],
+  );
+
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -138,7 +163,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, images: string[] = []) => {
       const text = content.trim();
       if (!text || isStreaming) return;
 
@@ -159,6 +184,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         id: createId('msg'),
         role: 'user',
         content: text,
+        ...(images.length ? { images } : {}),
         createdAt: Date.now(),
       };
 
@@ -187,7 +213,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         await streamChat(
           nextMessages
             .filter((m) => m.id !== assistantMessage.id)
-            .map((m) => ({ role: m.role, content: m.content })),
+            .map((m) => ({ role: m.role, content: m.content, images: m.images })),
           {
             onToken: (chunk) => {
               updateConversation(conversationId!, (c) => ({
@@ -264,6 +290,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     selectConversation,
     deleteConversation,
     renameConversation,
+    editMessage,
     sendMessage,
     stopStreaming,
   };

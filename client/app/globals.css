@@ -7,6 +7,70 @@
   --accent: #10a37f;
 }
 
+html[data-theme="light"] {
+  --background: #f7f7f8;
+  --foreground: #202123;
+  --sidebar: #ffffff;
+}
+
+html[data-theme="light"] body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html[data-theme="light"] [class~="bg-[#212121]"] {
+  background-color: var(--background) !important;
+}
+
+html[data-theme="light"] [class~="bg-[#171717]"],
+html[data-theme="light"] [class~="bg-[#1a1a1a]"],
+html[data-theme="light"] [class~="bg-[#2a2a2a]"],
+html[data-theme="light"] [class~="bg-[#2f2f2f]"] {
+  background-color: var(--sidebar) !important;
+}
+
+html[data-theme="light"] [class~="text-[#ececec]"],
+html[data-theme="light"] [class~="text-white"] {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="light"] [class~="text-white/90"],
+html[data-theme="light"] [class~="text-white/80"],
+html[data-theme="light"] [class~="text-white/75"],
+html[data-theme="light"] [class~="text-white/70"],
+html[data-theme="light"] [class~="text-white/60"],
+html[data-theme="light"] [class~="text-white/50"],
+html[data-theme="light"] [class~="text-white/45"],
+html[data-theme="light"] [class~="text-white/40"],
+html[data-theme="light"] [class~="text-white/35"],
+html[data-theme="light"] [class~="text-white/30"],
+html[data-theme="light"] [class~="text-white/20"] {
+  color: rgb(32 33 35 / 70%) !important;
+}
+
+html[data-theme="light"] [class~="border-white/5"],
+html[data-theme="light"] [class~="border-white/10"],
+html[data-theme="light"] [class~="border-white/20"] {
+  border-color: rgb(32 33 35 / 12%) !important;
+}
+
+html[data-theme="light"] [class~="bg-white/5"],
+html[data-theme="light"] [class~="bg-white/10"],
+html[data-theme="light"] [class~="bg-white/20"] {
+  background-color: rgb(32 33 35 / 6%) !important;
+}
+
+html[data-theme="light"] [class*="placeholder:text-white"]::placeholder {
+  color: rgb(32 33 35 / 40%) !important;
+}
+
+html[data-accent="blue"] [class~="bg-[#10a37f]"],
+html[data-accent="purple"] [class~="bg-[#10a37f]"],
+html[data-accent="pink"] [class~="bg-[#10a37f]"],
+html[data-accent="orange"] [class~="bg-[#10a37f]"] {
+  background-color: var(--accent) !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
