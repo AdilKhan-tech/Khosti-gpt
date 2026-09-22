@@ -31,6 +31,12 @@
 $ npm install
 ```
 
+## Authentication cookies
+
+Authentication uses the `khosti_session` HttpOnly cookie. Set `CLIENT_ORIGIN` to
+the exact frontend origin. When the frontend and API are deployed on different
+sites, also set `COOKIE_SAME_SITE=none` and serve both over HTTPS.
+
 ## Compile and run the project
 
 ```bash
